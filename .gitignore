@@ -1,24 +1,6 @@
-# Rust
-target/
-Cargo.lock
-**/*.rs.bk
-*.pdb
-*.dll
-*.dylib
-*.so
-
-# Lambda build artifacts
-bootstrap
+/target
+/bootstrap
 lambda.zip
-
-# Temp files
-*.tmp
-*.log
-*.cache
+**/*.log
 *.swp
 .DS_Store
-
-# GitHub
-.env
-.env.*
-.github-token
