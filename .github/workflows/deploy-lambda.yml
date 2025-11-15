@@ -1,0 +1,74 @@
+name: Build and Deploy Rust Lambda
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  LAMBDA_FUNCTION_NAME: ensure-eip-rust
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build release binary
+        run: |
+          cargo build --release
+
+      - name: Package Lambda bootstrap
+        run: |
+          cp target/release/ensure-eip-rust bootstrap
+          chmod +x bootstrap
+          zip -q lambda.zip bootstrap
+          ls -lh lambda.zip
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Lambda code
+        run: |
+          echo "Actualizando código de la Lambda ${LAMBDA_FUNCTION_NAME} en ${AWS_REGION}..."
+          aws lambda update-function-code \
+            --function-name "${LAMBDA_FUNCTION_NAME}" \
+            --zip-file fileb://lambda.zip \
+            --publish
+
+      - name: Smoke test Lambda
+        run: |
+          echo "Invocando Lambda para prueba rápida..."
+          aws lambda invoke \
+            --function-name "${LAMBDA_FUNCTION_NAME}" \
+            --payload '{}' \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          echo "Respuesta cruda:"
+          cat response.json
