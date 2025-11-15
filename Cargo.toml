@@ -1,0 +1,21 @@
+[package]
+name = "ensure-eip-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lambda_runtime = "1.0.1"
+aws-config = "1"
+aws-sdk-ec2 = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = "debuginfo"
+panic = "abort"
